@@ -86,4 +86,26 @@ abstract class AbstractResource {
         );
         return json_encode($obj);
     }
+
+
+    /**
+     * @param $value
+     * @return array
+     */
+    public function toArray($value) {
+
+        if (is_array($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+
+            if (str_contains($value,',')) {
+
+                return array_map('trim', explode(',', $value));
+            } else {
+                return [$value];
+            }
+        }
+        return [];
+    }
 } 

@@ -56,7 +56,7 @@ class OrganizationsResource extends AbstractEntityResource {
 
     public function completeRegistration($params = array()) {
 
-        $user = $this->api->user;
+        $user = $this->api->user();
 
         $defaults = array(
             'verification_code' => $verification_code = null,
@@ -65,10 +65,9 @@ class OrganizationsResource extends AbstractEntityResource {
             'name' => $name = null
         );
 
-        $helper = $this->api->helper;
 
-        $this->api->validation_factory->extend('email_domains', function($attribute, $value, $parameters) use($helper) {
-            $email_domains = $helper->toArray($value);
+        $this->api->validation_factory->extend('email_domains', function($attribute, $value, $parameters) {
+            $email_domains = $this->toArray($value);
 
             foreach ($email_domains as $domain) {
 
@@ -119,7 +118,7 @@ class OrganizationsResource extends AbstractEntityResource {
 
             $organization->save();
 
-            $email_domains = $helper->toArray($email_domains);
+            $email_domains = $this->toArray($email_domains);
 
             if (!empty($email_domains)) {
 

@@ -1,0 +1,1 @@
+Registration url for <?=$organization->name?> is <?=$url?>

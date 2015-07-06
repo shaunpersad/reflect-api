@@ -98,6 +98,11 @@ class User extends AbstractAppModel implements AuthenticatableContract, CanReset
         return $this->hasMany('App\Models\Comment');
     }
 
+    public function accessTokens() {
+
+        return $this->hasMany('App\Models\AccessToken');
+    }
+
     public function tags() {
 
         return $this->belongsToMany(

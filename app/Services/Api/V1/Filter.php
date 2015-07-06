@@ -12,6 +12,9 @@ use App\Models\User;
 
 class Filter {
 
+    /**
+     * @var Api
+     */
     protected $api;
 
     public function __construct(ApiContract $api) {
@@ -26,20 +29,20 @@ class Filter {
      */
     public function adminsOnly($message = 'Only admins may do this.') {
 
-        if (!empty($this->api->user)) {
+        $user = $this->mustBeLoggedIn();
 
-            if ($this->api->user->hasRole(Role::ROLE_SUPER_ADMIN)) {
+        if ($user->hasRole(Role::ROLE_SUPER_ADMIN)) {
 
-                return $this->api->user;
-            }
-
-            $organization = Organization::current();
-
-            if ($this->api->user->hasRole($organization->roleAdminName())) {
-
-                return $this->api->user;
-            }
+            return $user;
         }
+
+        $organization = Organization::current();
+
+        if ($user->hasRole($organization->roleAdminName())) {
+
+            return $user;
+        }
+
         throw new ForbiddenException($message);
     }
 
@@ -58,10 +61,7 @@ class Filter {
      */
     public function mustBeLoggedIn($message = 'A logged in user is required to do this.') {
 
-        if (!empty($this->api->user)) {
-            return $this->api->user;
-        }
-        throw new ForbiddenException($message);
+        return $this->api->user();
     }
 
     /**
@@ -87,7 +87,7 @@ class Filter {
         $user = $this->mustBeLoggedIn();
         $resource_owner = $this->mustHaveResourceOwner();
 
-        if ($user->id != $resource_owner->id) {
+        if ($user->id == $resource_owner->id) {
 
             throw new ForbiddenException($message);
         }
@@ -118,12 +118,13 @@ class Filter {
 
     public function superAdminsOnly($message = 'Only super admins may do this.') {
 
+        $user = $this->mustBeLoggedIn();
         if (
-            !empty($this->api->user) &&
-            $this->api->user->hasRole(Role::ROLE_SUPER_ADMIN)
+            !empty($user) &&
+            $user->hasRole(Role::ROLE_SUPER_ADMIN)
         ) {
 
-            return $this->api->user;
+            return $user;
         }
         throw new ForbiddenException($message);
     }

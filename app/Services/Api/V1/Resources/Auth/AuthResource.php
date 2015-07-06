@@ -4,39 +4,26 @@
 namespace App\Services\Api\V1\Resources\Auth;
 
 
+use App\Events\PasswordResetRequested;
 use App\Events\UserRegistrationCompleted;
 use App\Exceptions\BadRequestException;
-use App\Exceptions\ForbiddenException;
-use App\Exceptions\UnauthorizedException;
+use App\Models\AccessToken;
 use App\Models\User;
 use App\Services\Api\V1\Resources\AbstractResource;
-use Illuminate\Contracts\Auth\PasswordBroker;
 use Illuminate\Database\QueryException;
 
 class AuthResource extends AbstractResource {
 
-    public static function endpointFilters($resource) {
-
-        return array(
-            'login' => 'publicAccess',
-            'logout' => 'mustBeLoggedIn',
-            'register' => 'publicAccess',
-            'requestPasswordReset' => 'publicAccess',
-            'resetPassword' => 'publicAccess'
-        );
-    }
-
     /**
      * @param array $params
-     * @return User|null
-     * @throws \App\Exceptions\UnauthorizedException
+     * @return mixed
+     * @throws BadRequestException
      */
     public function login($params = array()) {
 
         $defaults = array(
             'email' => $email = null,
-            'password' => $password = null,
-            'remember' => $remember = false
+            'password' => $password = null
         );
 
         $rules = array(
@@ -48,21 +35,20 @@ class AuthResource extends AbstractResource {
 
         extract($params);
 
-        if ($this->api->guard->attempt(array(
+        if (!$this->api->guard->attempt(array(
             'email' => $email,
             'password' => $password,
             'login_type' => User::LOGIN_TYPE_PASSWORD,
             'deleted_at' => null
-        ), $remember)) {
-
-            $this->api->user =  $this->api->guard->user();
+        ))) {
+            throw new BadRequestException("Your credentials are incorrect. Please try again.");
         }
 
-        if (empty($this->api->user)) {
-            throw new UnauthorizedException('Invalid credentials. Please try again.');
-        }
+        $user = $this->api->user();
 
-        return $this->api->user;
+        $access_token = AccessToken::make($user);
+
+        return AccessToken::where('token', $access_token->token)->firstOrFail();
 
     }
 
@@ -72,16 +58,21 @@ class AuthResource extends AbstractResource {
      */
     public function logout($params = array()) {
 
-        $user = $this->api->user;
+        $user = $this->api->user();
 
         $this->api->guard->logout();
+
+        foreach($user->accessTokens()->get() as $access_token) {
+
+            $access_token->delete();
+        }
 
         return $user;
     }
 
     /**
      * @param array $params
-     * @return User
+     * @return AccessToken
      * @throws \App\Exceptions\BadRequestException
      */
     public function register($params = array()) {
@@ -113,11 +104,11 @@ class AuthResource extends AbstractResource {
 
             $this->api->guard->login($user);
 
-            $this->api->user = $this->api->guard->user();
+            $user = $this->api->user();
 
             $this->api->event->fire(new UserRegistrationCompleted($user));
 
-            return $this->api->user;
+            return $this->login($params);
 
         } catch(QueryException $e) {
 
@@ -128,8 +119,7 @@ class AuthResource extends AbstractResource {
 
     /**
      * @param array $params
-     * @return null
-     * @throws \App\Exceptions\BadRequestException
+     * @return mixed
      */
     public function requestPasswordReset($params = array()) {
 
@@ -145,23 +135,15 @@ class AuthResource extends AbstractResource {
 
         extract($params);
 
-        $password_broker = app('Illuminate\Contracts\Auth\PasswordBroker');
+        $this->api->event->fire(new PasswordResetRequested($email));
 
-        $response = $password_broker->sendResetLink(['email' => $email], function($m) {
-            $m->subject('Your password reset link.');
-        });
+        return ['email' => $email];
 
-        if ($response == PasswordBroker::RESET_LINK_SENT) {
-            return ['email' => $email];
-        }
-
-        throw new BadRequestException('Please request a new password reset.');
     }
 
     /**
      * @param array $params
-     * @return User|null
-     * @throws \App\Exceptions\BadRequestException
+     * @return User
      */
     public function resetPassword($params = array()) {
 
@@ -172,7 +154,7 @@ class AuthResource extends AbstractResource {
         );
 
         $rules = array(
-            'token' => array('required'),
+            'token' => array('required', 'exists:password_resets,token,email,'.@$params['email']),
             'email' => array('required', 'email', 'exists:users,email,login_type,'.User::LOGIN_TYPE_PASSWORD.',deleted_at,NULL'),
             'password' => array('required', 'confirmed', 'min:6')
         );
@@ -181,23 +163,20 @@ class AuthResource extends AbstractResource {
 
         extract($params);
 
-        $password_broker = app('Illuminate\Contracts\Auth\PasswordBroker');
+        $user = User::where('email', $email)->where('login_type', User::LOGIN_TYPE_PASSWORD)->firstOrFail();
 
-        $response = $password_broker->reset($params, function(User $user, $password) {
-            $user->password = bcrypt($password);
+        $user->password = bcrypt($password);
 
-            $user->save();
+        $user->save();
 
-            $this->api->guard->login($user);
-        });
+        $this->api->guard->login($user);
 
-        if ($response == PasswordBroker::PASSWORD_RESET) {
+        app('db')->table('password_resets')->where('token', $token)->where('email', $email)->delete();
 
-            $this->api->user = $this->api->guard->user();
-            return $this->api->user;
-        }
+        $this->logout();
 
-        throw new BadRequestException('Please request a new password reset.');
+        return $user;
+
     }
 
 } 

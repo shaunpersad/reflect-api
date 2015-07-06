@@ -8,8 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 
 abstract class AbstractAppModel extends Model {
 
-    public static $cache_key;
-
     public function flushCache() {
 
         $cache = app('Illuminate\Contracts\Cache\Repository');
@@ -21,7 +19,9 @@ abstract class AbstractAppModel extends Model {
             $cache->forget($key);
         }
 
-        $cache->tags($this::$cache_key)->flush();
+        $class = get_class($this);
+
+        $cache->tags($class)->flush();
     }
 
     public static function observers() {
@@ -54,12 +54,14 @@ abstract class AbstractAppModel extends Model {
 
         $class = get_called_class();
 
-        $key = $class::$cache_key.'_'.$id.'_'.implode('_',$columns);
+        $key = $class.'_'.$id.'_'.implode('_',$columns);
+
+        $expires_at = 60 * 1; // 1 hour
 
         $cache = app('Illuminate\Contracts\Cache\Repository');
         $model = $cache->remember(
             $key,
-            60 * 24,
+            $expires_at,
             function() use($class, $id, $columns) {
 
                 return $class::findOrFail($id, $columns);
@@ -70,7 +72,7 @@ abstract class AbstractAppModel extends Model {
 
     public function key($columns = array('*')) {
 
-        return $this::$cache_key.'_'.$this->id.'_'.implode('_',$columns);
+        return get_class($this).'_'.$this->id.'_'.implode('_',$columns);
     }
 
 } 

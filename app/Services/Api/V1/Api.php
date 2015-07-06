@@ -5,6 +5,7 @@ namespace App\Services\Api\V1;
 
 
 use App\Contracts\ApiContract;
+use App\Exceptions\UnauthorizedException;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\Api\V1\Resources\Auth\AuthResource;
@@ -12,7 +13,6 @@ use App\Services\Api\V1\Resources\Organizations\OrganizationsResource;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
 use Illuminate\Validation\Factory as ValidationFactory;
-use Monolog\Logger;
 use Illuminate\Contracts\Cache\Repository as Cache;
 
 class Api implements ApiContract {
@@ -33,44 +33,37 @@ class Api implements ApiContract {
     public $dispatcher;
 
     /**
-     * @var \Illuminate\Contracts\Auth\Authenticatable|null
-     */
-    public $user;
-
-    /**
      * @var User|null
      */
     public  $resource_owner;
-
-    /**
-     * @var Helper
-     */
-    public $helper;
 
     /**
      * @var Cache
      */
     public $cache;
 
-    /**
-     * @var Logger
-     */
-    public $log;
 
-    public function __construct(Guard $guard, ValidationFactory $validation_factory, EventDispatcher $event, Cache $cache, Logger $log) {
+    public function __construct(Guard $guard, ValidationFactory $validation_factory, EventDispatcher $event, Cache $cache) {
 
         $this->guard = $guard;
         $this->validation_factory = $validation_factory;
         $this->event = $event;
         $this->cache = $cache;
-        $this->log = $log;
-
-        $this->user = $guard->user();
-        $this->helper = new Helper($this);
-
-        $log->info('Instantiating API');
-
     }
+
+    /**
+     * @return User
+     * @throws UnauthorizedException
+     */
+    public function user() {
+
+        $user = $this->guard->user();
+        if (!$user) {
+            throw new UnauthorizedException();
+        }
+        return $user;
+    }
+
 
     public function organizations(Organization $organization = null) {
 

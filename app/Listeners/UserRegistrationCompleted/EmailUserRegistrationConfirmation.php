@@ -1,10 +1,9 @@
 <?php
-namespace App\Listeners\OrganizationRegistrationCompleted;
+namespace App\Listeners\UserRegistrationCompleted;
 
 use App\Events\UserRegistrationCompleted;
 
 use Illuminate\Contracts\Mail\Mailer;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
 class EmailUserRegistrationConfirmation implements ShouldQueue {

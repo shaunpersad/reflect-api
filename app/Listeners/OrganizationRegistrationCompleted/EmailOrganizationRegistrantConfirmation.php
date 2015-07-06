@@ -4,7 +4,6 @@ namespace App\Listeners\OrganizationRegistrationCompleted;
 use App\Events\OrganizationRegistrationCompleted;
 
 use Illuminate\Contracts\Mail\Mailer;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
 class EmailOrganizationRegistrantConfirmation implements ShouldQueue {

@@ -18,10 +18,8 @@ $app->get('/', function() use($app) {
 
 $app->group(['prefix' => 'v1', 'middleware' => 'token', 'namespace' => 'App\Http\Controllers\Api'], function() use($app) {
 
-    $app->get('/', function() use ($app) {
-
-        return 'This is V1 of the API';
-    });
+    $app->get('/', 'SwaggerController@getIndex');
+    $app->get('/docs', 'SwaggerController@getDocs');
 
     $app->post('/auth/logout', 'Auth\AuthController@postLogout');
     $app->post('/auth/register', 'Auth\AuthController@postRegister');

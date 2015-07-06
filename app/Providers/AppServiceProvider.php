@@ -13,18 +13,26 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->bind('Symfony\Component\Translation\TranslatorInterface', function ($app) {
-            return $app['translator'];
+        $this->app->bind('Illuminate\Contracts\Mail\Mailer', function($app) {
+
+            config(['services' => [
+
+                'mailgun' => [
+                    'domain' => env('MAILGUN_DOMAIN', ''),
+                    'secret' => env('MAILGUN_SECRET', '')
+                ]
+            ]]);
+
+            return $app['mailer'];
         });
 
         $this->app->singleton('App\Contracts\ApiContract', function($app) {
 
             return new Api(
                 $app['Illuminate\Contracts\Auth\Guard'],
-                $app['Illuminate\Validation\Factory'],
+                $app['validator'],
                 $app['Illuminate\Contracts\Events\Dispatcher'],
-                $app['Illuminate\Contracts\Cache\Repository'],
-                $app['log']
+                $app['Illuminate\Contracts\Cache\Repository']
             );
         });
     }

@@ -15,7 +15,7 @@ class AuthController extends AbstractApiController {
      */
     protected $api;
 
-    public function postIndex() {
+    public function postLogin() {
 
         return $this->api->auth()->login($this->request->all());
     }
